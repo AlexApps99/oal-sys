@@ -17,6 +17,7 @@ fn generate(path: &std::path::Path) {
         .whitelist_type("^(?:(?:LP|PFN)?AL.+|EFXEAXREVERBPROPERTIES)$")
         .whitelist_var("^ALC?_.+$")
         .blacklist_type("^__u?int64_t$")
+        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate()
         .expect("Unable to generate bindings");
     bindings
@@ -36,11 +37,10 @@ fn generate(path: &std::path::Path) {
         .unwrap();
     file.write_all(b"impl EFXEAXREVERBPROPERTIES {").unwrap();
     loop {
-        let name = presets.next();
-        let name = if name.is_none() {
-            break;
+        let name = if let Some(n) = presets.next() {
+            n.unwrap()
         } else {
-            name.unwrap().unwrap()
+            break;
         };
         let name = &name["#define ".len()..name.len() - 2];
         let lname = name["EFX_REVERB_PRESET_".len()..].to_lowercase();
@@ -48,14 +48,15 @@ fn generate(path: &std::path::Path) {
             .next()
             .unwrap()
             .unwrap()
-            .replace("{", "")
-            .replace("}", "")
-            .replace("f", "");
+            .replace('{', "")
+            .replace('}', "")
+            .replace('f', "");
         d.retain(|c| !c.is_whitespace());
-        let d: Vec<_> = d.split(",").collect();
+        let d: Vec<_> = d.split(',').collect();
         let _ = presets.next();
         assert_eq!(d.len(), 27);
-        #[rustfmt_skip]
+        #[rustfmt::skip]
+        #[allow(clippy::zero_prefixed_literal)]
         file.write_all(
             format!(
                 "
@@ -86,7 +87,7 @@ fn generate(path: &std::path::Path) {
             flRoomRolloffFactor: {},
             iDecayHFLimit: {},
         }}
-    }}\n\n",
+    }}\n",
             name, lname,
             d[00], d[01], d[02], d[03], d[04],
             d[05], d[06], d[07], d[08], d[09],
